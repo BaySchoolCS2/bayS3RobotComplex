@@ -3,7 +3,7 @@
 ##
 ##    ┌────────────────────────────────────────────────┐
 ##    │     Bay School Python Module Derived by        │
-##    │                Richard Piccioni                │
+##    │     Richard Piccioni and Laura Draxler         │
 ##    │                   from                         │
 ##    │        Scribbler II Kinematic GUI              │
 ##    │  (c) Copyright 2012 and 2013 Matt Greenwolfe   │
