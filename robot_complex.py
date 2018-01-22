@@ -52,29 +52,61 @@ speed_limit = 18.00 # cm/s
 
 print("eggs")
 
-def append_move_distance_command(d, v0, v, a):
-    if abs(v0) > speed_limit or abs(v) > speed_limit:
-        print("Oops! Speed limit exceeded.")
-        return    
+
+def append_move_distance_command(d):
+	# s2.spin PUB move(left_distance, right_distance, move_time, max_speed, no_stop) | max_d, max_pd, max_rvel, max_lvel, end_spd
     global commands # Note to CS students: Don't use global variables in complex programs.
                     # We are using one here to simplify the argument list that IDLE displays
                     # to physics students when they edit their code.
-    commands += ["s2.move_distance_mms(" + str(d)+ ", " + str(v0) + ", " + str(a) + ")\n"]
-    
-def speed_up_to(final_speed, time_interval):
-    """ Uniformly accelerate the robot from rest """
-    v0 = 0.00
-    d  = final_speed * time_interval / 2
-    a  = final_speed/time_interval
-    v  = final_speed
-    append_move_distance_command(d, v0, v, a)
-    
-def move_forward(distance, time_interval):
-    d  = distance
-    v0 = distance / time_interval
-    a  = 0.00
-    v  = v0
-    append_move_distance_command(d, v0, v, a)
+    commands += ["s2.move(" + str(d)+ ", " + str(d) + ", 0, 18, 1" + ")\n"]
+
+def move_forward(distance):
+    append_move_distance_command(distance)
+
+# The following might work with s2.spin:
+
+def send_command_list(list_name = commands):
+    print("Writing spin file . . . ")
+    spinfile = "complex_s2.spin"
+    try:
+        ctype_spinfile = ctypes.c_char_p(spinfile)
+    except TypeError:
+        ctype_spinfile = ctypes.c_char_p(spinfile.encode('utf-8'))
+    spin_code = '''CON
+
+_clkmode      = xtal1 + pll16x
+_xinfreq      = 5_000_000
+
+OBJ
+
+  s2 : "s2"
+
+PUB start
+  s2.start_motors
+  repeat
+    waitcnt(clkfreq + cnt)
+    waitpne(|< s2#BUTTON, |< s2#BUTTON,0)
+'''    
+    for command in commands:
+        spin_code += ("    " + command)
+    with open(spinfile,"w") as ms2:
+        ms2.write(spin_code)
+    ms2.close()
+    path = os.path.abspath(os.path.dirname(sys.argv[0])) #points to curr working dir
+    prop = ctypes.cdll.LoadLibrary(path + "\Propellent.dll")
+    prop.InitPropellent(None)
+    try:
+        libdir = ctypes.c_char_p(os.path.realpath(path))
+    except TypeError:
+        libdir = ctypes.c_char_p(os.path.realpath(path).encode('utf-8'))
+    prop.SetLibraryPath(libdir)
+    prop.CompileSource(ctype_spinfile,True)
+#    prop.DownloadToPropeller(0,1) #store in RAM only?
+    prop.DownloadToPropeller(0,3)  #store in RAM and EEPROM
+    prop.FinalizePropellent
+
+# None of the following motion functions will work until they are aligned
+# with s2.spin rather than s2mms.spin:
 
 def move_backward(distance, time_interval):
     d  = distance
@@ -122,50 +154,9 @@ def turn_left(degrees_ccw):
     global commands
     commands += ["s2.turn_mms(" + str(degrees_ccw)+ ")\n"]
 
-def send_command_list(list_name = commands):
-    print("Writing spin file . . . ")
-    spinfile = "complex_s2.spin"
-    try:
-        ctype_spinfile = ctypes.c_char_p(spinfile)
-    except TypeError:
-        ctype_spinfile = ctypes.c_char_p(spinfile.encode('utf-8'))
-    spin_code = '''CON
 
-_clkmode      = xtal1 + pll16x
-_xinfreq      = 5_000_000
 
-OBJ
 
-  s2 : "s2"
-
-PUB start
-  s2.start_motors
-  repeat
-    waitcnt(clkfreq + cnt)
-    waitpne(|< s2#BUTTON, |< s2#BUTTON,0)
-'''    
-    for command in commands:
-        spin_code += ("    " + command)
-    with open(spinfile,"w") as ms2:
-        ms2.write(spin_code)
-    ms2.close()
-    path = os.path.abspath(os.path.dirname(sys.argv[0])) #points to curr working dir
-    prop = ctypes.cdll.LoadLibrary(path + "\Propellent.dll")
-    prop.InitPropellent(None)
-    try:
-        libdir = ctypes.c_char_p(os.path.realpath(path))
-    except TypeError:
-        libdir = ctypes.c_char_p(os.path.realpath(path).encode('utf-8'))
-    prop.SetLibraryPath(libdir)
-    prop.CompileSource(ctype_spinfile,True)
-#    prop.DownloadToPropeller(0,1) #store in RAM only?
-    prop.DownloadToPropeller(0,3)  #store in RAM and EEPROM
-    prop.FinalizePropellent
-
-# legacy translations
-left = turn_left
-forward = move_forward
-    
 ##=======[ License ]===========================================================
 ##
 ##┌──────────────────────────────────────────────────────────────────────────────────────┐
